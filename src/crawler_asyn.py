@@ -1,8 +1,10 @@
-from .utils import input_validator
+from utils import input_validator
 from bs4 import BeautifulSoup
 from queue import Queue
 import asyncio
 import aiohttp
+import logging
+
 
 class Crawler():
     def __init__(self) -> None:
@@ -18,57 +20,67 @@ class Crawler():
         self._initial_url = input_validator(value)
 
 
-    async def get_links(self, session: aiohttp.ClientSession, url: str):
-        try:
-            async with session.get(url, timeout=1) as resp:
+    async def get_links(self, url: str, stage:int):
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=10) as resp:
+                logging.info(f'stage: {stage}; url: {url}')
                 soup = BeautifulSoup(await resp.text(), 'html.parser')
                 product_divs = soup.find('div', {'id': 'mw-content-text'})
                 links = product_divs.find_all(
                     lambda tag: tag.name == 'a' and tag.get('href', '').startswith('/wiki/')
                 )
+                articles = list([link.get('href') for link in links])
+                print(f'{url:<150}', end='\r')
+                self.check_links(articles)
+                await asyncio.sleep(1)
 
-                return list([link.get('href') for link in links])
-        except asyncio.TimeoutError:
-            print('Timed out')
-            return list()
+                return articles
             
 
-    async def check_links(self, articles: list):
+    def check_links(self, articles: list):
         if any(article == "/wiki/Adolf_Hitler" for article in articles):
-            print('Hitler found.')
+            logging.info('Hitler found.')
+            print('\nHITLER FOUND!!!!!')
+            quit()
 
 
-    async def set_to_queue(self, session: aiohttp.ClientSession, queue: Queue, url: str, current_stage: int):
-        print(f'stage: {current_stage}; url: {url}')
-        articles = await self.get_links(session, url)
-        await self.check_links(articles)
-
+    async def set_to_queue(self, queue: Queue, stage:int, articles: list):
         for article in articles:
-            queue.put(('https://en.wikipedia.org' + article, current_stage + 1))
+            queue.put(('https://en.wikipedia.org' + article, stage + 1))
 
+    async def manager(self, queue: Queue, url:str, stage:int):
+        articles = list()
 
-    async def gather_data(self, queue:Queue, stage: int):
-        tasks = list()
-        urls = list()
+        try:
+            articles = await self.get_links(url, stage)
+        except asyncio.TimeoutError:
+            logging.info('Timed out')
+        except Exception as error:
+            logging.info(error)
+            return list()
+        
+        await self.set_to_queue(queue, stage, articles)
+
+    async def gather_data(self, queue:Queue, current_stage: int):
+        tasks = []
 
         while not queue.empty():
-            current_stage = queue.queue[0][1]
+            url, stage = queue.get()
 
             if current_stage != stage:
                 break
 
-            url = queue.get()[0]
-            urls.append(url)
-
-        async with aiohttp.ClientSession() as session:
-            async with asyncio.TaskGroup() as group:
-                for url in urls:
-                    result = group.create_task(self.set_to_queue(session, queue, url, current_stage))
-
+            task = asyncio.create_task(self.manager(queue, url, stage))
+            tasks.append(task)
+        await asyncio.gather(*tasks)
 
     async def get_hitler_page(self):
         queue = Queue()
         queue.put((self._initial_url, 0))
         
         for stage in range(7):
+            logging.info(f'current stage: {stage}'.upper())
             await self.gather_data(queue, stage)
+            print('')
+
+        print('HITLER NOT FOUND(((((')
