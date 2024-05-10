@@ -1,12 +1,24 @@
-from .crawler import Crawler
+from crawler_asyn import Crawler
+import asyncio
+import logging
 
-def main():
+async def main():
     crawler =  Crawler()
-    crawler.initial_url = input('Input started Wikipedia URL: ')
-    # crawler.initial_url = 'https://en.wikipedia.org/wiki/Luca_Brecel'
+    logname = 'reqests.log'
+
+    logging.basicConfig(filename=logname,
+                        filemode='w',
+                        format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+                        datefmt='%H:%M:%S',
+                        level=logging.DEBUG)
+    
+    # crawler.initial_url = input('Input started Wikipedia URL: ')
+    crawler.initial_url = 'https://en.wikipedia.org/wiki/Luca_Brecel'
     # crawler.initial_url = 'https://en.wikipedia.org/wiki/Karl_Larenz'
-    print(crawler.hitler_finder())
+    # crawler.initial_url = 'https://en.wikipedia.org/wiki/Nazism'
+    
+    await crawler.get_hitler_page()
 
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
