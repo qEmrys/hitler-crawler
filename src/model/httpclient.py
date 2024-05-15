@@ -1,13 +1,18 @@
+from src.model.config.config import Config
+from bs4 import BeautifulSoup
+import aiohttp
 import logging
-import requests
 import json
-from config import Config
 
 class HttpClient:
     def __init__(self, config=None):
         self.config = config or Config()
-        self.session = self.config.transport
+        # self.session = self.config.transport
 
-    def request(self, method, url, headers=None, data=None):
-        # ... (Request handling logic)
-        pass
+    async def request(self, url, headers=None, data=None):
+        # session = self.session
+        # session.headers = headers
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                print(BeautifulSoup(await resp.text(), 'html.parser'))
