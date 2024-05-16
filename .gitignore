@@ -2,5 +2,5 @@
 venv/
 trash/
 tests/
-src/__pycache__/
+__pycache__/
 hitler_crawler.egg-info/
