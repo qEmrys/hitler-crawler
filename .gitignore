@@ -1,6 +1,8 @@
+hitler_crawler.egg-info/
+__pycache__/
 .vscode/
 venv/
 trash/
 tests/
-__pycache__/
-hitler_crawler.egg-info/
+.env
+*.log
